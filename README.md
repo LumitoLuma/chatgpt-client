@@ -4,6 +4,8 @@ This is a very simple ChatGPT client written in ANSI C (C89) for UNIX-based syst
 
 You need to be registered with OpenAI and obtain an API key (https://platform.openai.com/account/api-keys). Be aware that API usage may be billed.
 
+Your OpenAI API key needs to be written in the `~/.openaikey` file, like this: `echo OPEN_AI_KEY > ~/.openaikey`, replacing `OPEN_AI_KEY` with your API key. In conversation mode, you can also input it with the `/apikey` shell command.
+
 You have two ways to interact with the client:
 - Directly from the shell, without initiating a conversation. For example, you can ask:
 
