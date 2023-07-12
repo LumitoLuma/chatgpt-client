@@ -27,7 +27,8 @@
 #include <sys/types.h>
 #include <unistd.h>
 
-#define APP_VERSION "0.3.0"
+#define APP_VERSION "0.3.1"
+#define DEFAULT_MODEL "gpt-3.5-turbo"
 
 unsigned int tokens = 0;
 
@@ -343,7 +344,7 @@ int shell_mode(char *apikey)
     }
     printf("ChatGPT conversation shell. Type /help for command usage.\n\n");
     char *prompt_1 = "{\"model\": \"";
-    char *model = "gpt-3.5-turbo";
+    char *model = DEFAULT_MODEL;
     char *prompt_2 = "\", \"messages\": [";
     char *prompt_system = "";
     char *conversation = "";
@@ -400,7 +401,7 @@ int shell_mode(char *apikey)
                 {
                     if (remaining_data == NULL)
                     {
-                        model = "gpt-3.5-turbo";
+                        model = DEFAULT_MODEL;
                         printf("Model successfully reset (set to %s).\n", model);
                         continue;
                     }
@@ -521,7 +522,8 @@ int main(int argc, char **argv)
     if (argc > 1 && strcmp(argv[1], "--help") == 0)
     {
         printf("Simple ChatGPT command-line utility for Unix-based systems.\n");
-        printf("Application version: %s\n\n", APP_VERSION);
+        printf("Application version: %s\n", APP_VERSION);
+        printf("Default model: %s\n\n", DEFAULT_MODEL);
         printf("Usage: %s [<prompt> | --help]\n\n", argv[0]);
         printf("Options:\n");
         printf(" <prompt>: The prompt (question) to send to ChatGPT.\n");
@@ -531,7 +533,7 @@ int main(int argc, char **argv)
         printf("    Input: %s Explain Linux in less than 20 words.\n", argv[0]);
         printf("   Output: A free open-source operating system based on Unix that can run on most computer hardware.\n\n");
         printf("Remember to add your OpenAI platform key to ~/.openaikey first.\n");
-        printf("API usage might be billed. See https://openai.com/pricing for more information. Model used (by default) is gpt-3.5-turbo.\n");
+        printf("API usage might be billed. See https://openai.com/pricing for more information.\n");
         printf("This tool can save your conversation in shell mode until you exit or reset it.\n\n");
         printf("(C) 2023, Lumito - www.lumito.net. ChatGPT and API provided by OpenAI. This is not an official application.\n");
         return 0;
@@ -588,8 +590,10 @@ int main(int argc, char **argv)
             prompt = concat(prompt, " ");
     }
 
-    char *data = "{\"model\": \"gpt-3.5-turbo\", \"messages\": [{\"role\": \"user\", \"content\": \"";
+    char *data = "{\"model\": \"";
 
+    data = concat(data, DEFAULT_MODEL);
+    data = concat(data, "\", \"messages\": [{\"role\": \"user\", \"content\": \"");
     data = concat(data, prompt);
     data = concat(data, "\"}]}");
 
