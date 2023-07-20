@@ -64,8 +64,8 @@ The ANSI C ChatGPT client is licensed using the GPL-3.0 license, more informatio
 
 - [x] <s>Main ANSI C client</s>
 - [x] <s>Conversation mode</s>
+- [x] <s>Changing default model in configuration</s>
 - [ ] Windows port
-- [ ] Changing default model in configuration
 - [ ] Securely store API key
 - [ ] Maintaining conversations between sessions
 
