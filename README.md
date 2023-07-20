@@ -1,12 +1,12 @@
 # ANSI C ChatGPT client
 
+**Latest version: 0.4.3 (July 20, 2023)**
+
 This is a very simple ChatGPT client written in ANSI C (C89) for UNIX-based systems only (for now). It communicates using OpenAI's API to provide a conversational-style terminal interface.
 
 You need to be registered with OpenAI and obtain an API key (https://platform.openai.com/account/api-keys). Be aware that API usage may be billed.
 
-Your OpenAI API key needs to be written in the `~/.openaikey` file, like this: `echo OPEN_AI_KEY > ~/.openaikey`, replacing `OPEN_AI_KEY` with your API key. In conversation mode, you can also input it with the `/apikey` shell command.
-
-You have two ways to interact with the client:
+You will first need to run `chatgpt --setup` to configure the client (API key and model). After that, you have two ways to interact with the client:
 - Directly from the shell, without initiating a conversation. For example, you can ask:
 
   `$ chatgpt What\'s the APT command used for in Linux?` (don't forget to escape the necessary characters)
