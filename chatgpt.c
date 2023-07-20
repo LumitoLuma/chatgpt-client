@@ -27,8 +27,7 @@
 #include <sys/types.h>
 #include <unistd.h>
 
-#define APP_VERSION "0.3.1"
-#define DEFAULT_MODEL "gpt-3.5-turbo"
+#define APP_VERSION "0.4.3"
 
 unsigned int tokens = 0;
 
@@ -121,7 +120,7 @@ char *chatgpt_curl_perform(const char *data, const char *apikey, const char *end
     if (!curl)
     {
         curl_global_cleanup();
-        printf("Error: Could not initialize cURL\n");
+        fprintf(stderr, "Error: Could not initialize cURL\n");
         return NULL;
     }
 
@@ -152,7 +151,7 @@ char *chatgpt_curl_perform(const char *data, const char *apikey, const char *end
         fprintf(stderr, "HTTP request failed: %s.", curl_easy_strerror(res));
         if (strcmp(curl_easy_strerror(res), "Timeout was reached") == 0)
         {
-            printf(" This is probably OpenAI's fault. Try again later.");
+            fprintf(stderr, " This is probably OpenAI's fault. Try again later.");
         }
         printf("\n");
         return NULL;
@@ -335,7 +334,7 @@ int custom_backspace()
     printf("\a");
 }
 
-int shell_mode(char *apikey)
+int shell_mode(char *apikey, char *def_model)
 {
     char *orig_apikey = NULL, *endpoint = "https://api.openai.com/v1/chat/completions";
     if (apikey != NULL)
@@ -344,8 +343,8 @@ int shell_mode(char *apikey)
     }
     printf("ChatGPT conversation shell. Type /help for command usage.\n\n");
     char *prompt_1 = "{\"model\": \"";
-    char *model = DEFAULT_MODEL;
     char *prompt_2 = "\", \"messages\": [";
+    char *model = def_model;
     char *prompt_system = "";
     char *conversation = "";
     char *prompt_3 = "]}";
@@ -401,7 +400,7 @@ int shell_mode(char *apikey)
                 {
                     if (remaining_data == NULL)
                     {
-                        model = DEFAULT_MODEL;
+                        model = def_model;
                         printf("Model successfully reset (set to %s).\n", model);
                         continue;
                     }
@@ -466,7 +465,7 @@ int shell_mode(char *apikey)
                 }
                 else
                 {
-                    printf("Unknown command. Type /help for command usage.\n");
+                    fprintf(stderr, "Unknown command. Type /help for command usage.\n");
                 }
             }
             else if ((read_result[0] != '\0' || read_result == NULL) && apikey != NULL)
@@ -504,11 +503,11 @@ int shell_mode(char *apikey)
             }
             else if (apikey == NULL)
             {
-                printf("No API key provided. Please put it in ~/.openaikey, or specify it with the /apikey shell command.\n");
+                fprintf(stderr, "No API key provided. Please specify it with the /apikey shell command, or re-run the program with the '--setup' flag to configure it permanently.\n");
             }
             else
             {
-                printf("No message or command provided.\n");
+                fprintf(stderr, "No message or command provided.\n");
             }
         }
 
@@ -517,68 +516,229 @@ int shell_mode(char *apikey)
     return 0;
 }
 
+int setup(char *configdir, char *apikey, char *model)
+{
+    printf("Simple ChatGPT command-line utility for Unix-based systems.\n");
+    printf("Application version: %s\n\n-", APP_VERSION);
+    while (true)
+    {
+        printf("-- Current configuration ---\n");
+        printf("API key: %s\n", apikey);
+        printf("Model: %s\n-----------------------------\n", model);
+        printf("What action do you want to perform?\n [1] %s API key\n [2] %s model\n [w] Save and exit\n [q] Exit without saving.\n",
+               apikey == NULL ? "Set" : "Modify or unset",
+               model == NULL ? "Set" : "Modify or unset");
+        while (true)
+        {
+            printf("> ");
+            char *selection = "", c = '\n';
+            while ((c = getchar()) != EOF && c != '\n')
+            {
+                char str[2];
+                str[0] = c;
+                str[1] = '\0';
+                selection = concat(selection, str);
+            }
+            if (strcmp(selection, "1") == 0)
+            {
+                printf("Please enter your OpenAI API key in the prompt below.\n");
+                printf("You can obtain yours here: https://platform.openai.com/account/api-keys\n");
+                printf("You might be billed for the usage you make within this application.\n");
+                printf("To unset this value, please enter '(null)'.\n");
+                printf("To return to the previous menu, press enter.\n[1]> ");
+                char *apistr = "";
+                c = '\n';
+                while ((c = getchar()) != EOF && c != '\n')
+                {
+                    char str[2];
+                    str[0] = c;
+                    str[1] = '\0';
+                    apistr = concat(apistr, str);
+                }
+                if (strcmp(apistr, "(null)") == 0)
+                    apikey = NULL;
+                else if (strlen(apistr) != 0)
+                    apikey = apistr;
+                break;
+            }
+            else if (strcmp(selection, "2") == 0)
+            {
+                printf("Please enter your OpenAI chat model in the prompt below.\n");
+                printf("Check your available models: https://platform.openai.com/playground?mode=chat\n");
+                printf("To unset this value, please enter '(null)'.\n");
+                printf("To return to the previous menu, press enter.\n[2]> ");
+                char *modelstr = "";
+                c = '\n';
+                while ((c = getchar()) != EOF && c != '\n')
+                {
+                    char str[2];
+                    str[0] = c;
+                    str[1] = '\0';
+                    modelstr = concat(modelstr, str);
+                }
+                if (strcmp(modelstr, "(null)") == 0)
+                    model = NULL;
+                else if (strlen(modelstr) != 0)
+                    model = modelstr;
+                break;
+            }
+            else if (strcmp(selection, "w") == 0)
+            {
+                printf("Writing updated configuration...");
+                FILE *fp = fopen(configdir, "w");
+                if (fp == NULL)
+                {
+                    fprintf(stderr, " Error: cannot save data. Please try again later or check permissions.\n");
+                    fclose(fp);
+                    break;
+                }
+                if (apikey != NULL)
+                    fprintf(fp, "apikey=%s\n", apikey);
+                if (model != NULL)
+                    fprintf(fp, "model=%s\n", model);
+                if (apikey == NULL && model == NULL)
+                    remove(configdir);
+                fclose(fp);
+                printf(" done!\nBye!\n");
+                return 0;
+            }
+            else if (strcmp(selection, "q") == 0)
+            {
+                printf("Bye!\n");
+                return 0;
+            }
+            else
+                fprintf(stderr, "Error: command not recognized.\n");
+                continue;
+            break;
+        }
+    }
+    return 0;
+}
+
+int help(char *prog_name)
+{
+    printf("Simple ChatGPT command-line utility for Unix-based systems.\n");
+    printf("Application version: %s\n\n", APP_VERSION);
+    printf("Usage: %s [ <prompt> | --setup | --help ]\n\n", prog_name);
+    printf("Options:\n");
+    printf(" <prompt>: The prompt (question) to send to ChatGPT.\n");
+    printf("  --setup: Run client configuration wizard. Must be run once before using the client.\n");
+    printf("   --help: Show this help message.\n\n");
+    printf("If no arguments are specified, the program will enter in conversation (shell) mode.\n\n");
+    printf("Example:\n");
+    printf("    Input: %s Explain Linux in less than 20 words.\n", prog_name);
+    printf("   Output: A free open-source operating system based on Unix that can run on most computer hardware.\n\n");
+    printf("API usage might be billed. See https://openai.com/pricing for more information.\n");
+    printf("This tool can save your conversation in shell mode until you exit or reset it.\n\n");
+    printf("(C) 2023, Lumito - www.lumito.net. ChatGPT and API provided by OpenAI. This is not an official OpenAI application.\n");
+    return 0;
+}
+
 int main(int argc, char **argv)
 {
-    if (argc > 1 && strcmp(argv[1], "--help") == 0)
-    {
-        printf("Simple ChatGPT command-line utility for Unix-based systems.\n");
-        printf("Application version: %s\n", APP_VERSION);
-        printf("Default model: %s\n\n", DEFAULT_MODEL);
-        printf("Usage: %s [<prompt> | --help]\n\n", argv[0]);
-        printf("Options:\n");
-        printf(" <prompt>: The prompt (question) to send to ChatGPT.\n");
-        printf("  --help: Show this help message.\n\n");
-        printf("If no arguments are specified, the program will enter in conversation (shell) mode.\n\n");
-        printf("Example:\n");
-        printf("    Input: %s Explain Linux in less than 20 words.\n", argv[0]);
-        printf("   Output: A free open-source operating system based on Unix that can run on most computer hardware.\n\n");
-        printf("Remember to add your OpenAI platform key to ~/.openaikey first.\n");
-        printf("API usage might be billed. See https://openai.com/pricing for more information.\n");
-        printf("This tool can save your conversation in shell mode until you exit or reset it.\n\n");
-        printf("(C) 2023, Lumito - www.lumito.net. ChatGPT and API provided by OpenAI. This is not an official application.\n");
-        return 0;
-    }
-
-    char *homedir, *configdir, *apikey;
+    char *homedir, *configdir, *apikey = NULL, *config = "";
 
     if ((homedir = getenv("HOME")) == NULL)
     {
         homedir = getpwuid(getuid())->pw_dir;
     }
 
-    configdir = strcat(homedir, "/.openaikey");
+    configdir = strcat(homedir, "/.chatgpt-client");
 
     FILE *fp = fopen(configdir, "r");
     if (fp == NULL)
     {
         if (argc < 2)
         {
-            return shell_mode(NULL);
+            fprintf(stderr, "Error: No model configured. Please re-run the program with the '--setup' flag to configure it.\n");
+            return 1;
         }
-        printf("Error: No API key found. Please create a file called .openaikey in your home directory and paste your OpenAI API key in it.\n");
+        if (argc > 1)
+            if (strcmp(argv[1], "--help") == 0)
+                return help(argv[0]);
+            else if (strcmp(argv[1], "--setup") == 0)
+                return setup(configdir, NULL, NULL);
+        fprintf(stderr, "Error: No API key found. Please re-run the program with the '--setup' flag to configure it.\n");
         return 1;
     }
 
-    char *line = NULL;
-    size_t len = 0;
-    ssize_t read;
-
-    if ((read = getline(&line, &len, fp)) != -1)
+    int f;
+    while ((f = fgetc(fp)) != EOF)
     {
-        apikey = line;
-    }
-    else
-    {
-        printf("Error: No API key found. Please create a file called .openaikey in your home directory and paste your OpenAI API key in it.\n");
-        return 1;
+        if (f != '\r')
+        {
+            char str[2];
+            str[0] = f;
+            str[1] = '\0';
+            config = concat(config, str);
+        }
     }
 
-    line[strcspn(line, "\r\n")] = 0;
-
-    if (argc < 2)
+    char *ptr1, *ptr2, *model = NULL;
+    char *token = strtok_r(config, "\n", &ptr1);
+    while (token != NULL)
     {
-        return shell_mode(apikey);
+        if (strchr(token, '=') != NULL)
+        {
+            char *token2 = strtok_r(token, "=", &ptr2);
+            unsigned short mode = 0;
+            while (token2 != NULL)
+            {
+                if (mode == 1)
+                {
+                    apikey = strdup(token2);
+                    mode = 0;
+                }
+                else if (mode == 2)
+                {
+                    model = strdup(token2);
+                    mode = 0;
+                }
+                else if (!mode)
+                {
+                    if (strcmp(token2, "apikey") == 0)
+                        mode = 1;
+                    else if (strcmp(token2, "model") == 0)
+                        mode = 2;
+                }
+                token2 = strtok_r(NULL, "=", &ptr2);
+            }
+        }
+        token = strtok_r(NULL, "\n", &ptr1);
     }
+
+    bool useapi = false;
+    if (apikey != NULL)
+        useapi = true;
+
+    if (model == NULL)
+    {
+        if (argc > 1)
+        {
+            if (strcmp(argv[1], "--setup") == 0)
+                return setup(configdir, useapi ? apikey : NULL, NULL);
+            else if (strcmp(argv[1], "--help") == 0)
+                return help(argv[0]);
+        }
+        else
+        {
+            fprintf(stderr, "Error: No model configured. Please re-run the program with the '--setup' flag to configure it.\n");
+            return 1;
+        }
+    }
+    else if (argc < 2)
+        return shell_mode(useapi ? apikey : NULL, model);
+    else if (argc > 1)
+        if (strcmp(argv[1], "--help") == 0)
+            return help(argv[0]);
+        else if (strcmp(argv[1], "--setup") == 0)
+            return setup(configdir, useapi ? apikey : NULL, model);
+        else if (!useapi)
+        {
+            fprintf(stderr, "Error: No API key found. Please re-run the program with the '--setup' flag to configure it.\n");
+            return 1;
+        }
 
     char *prompt = "";
 
@@ -592,7 +752,7 @@ int main(int argc, char **argv)
 
     char *data = "{\"model\": \"";
 
-    data = concat(data, DEFAULT_MODEL);
+    data = concat(data, model);
     data = concat(data, "\", \"messages\": [{\"role\": \"user\", \"content\": \"");
     data = concat(data, prompt);
     data = concat(data, "\"}]}");
@@ -601,6 +761,7 @@ int main(int argc, char **argv)
 
     free(data);
     free(apikey);
+    free(model);
 
     if (res == NULL)
         return 1;
