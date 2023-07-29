@@ -143,7 +143,7 @@ char *chatgpt_curl_perform(const char *data, const char *apikey, const char *end
     curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
     curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, writefunc);
     curl_easy_setopt(curl, CURLOPT_WRITEDATA, &json_output);
-    curl_easy_setopt(curl, CURLOPT_TIMEOUT, 90L);
+    curl_easy_setopt(curl, CURLOPT_TIMEOUT, 300L);
 
     res = curl_easy_perform(curl);
     if (res != CURLE_OK)
