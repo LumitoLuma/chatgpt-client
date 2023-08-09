@@ -618,8 +618,10 @@ int setup(char *configdir, char *apikey, char *model)
                 return 0;
             }
             else
+            {
                 fprintf(stderr, "Error: command not recognized.\n");
-            continue;
+                continue;
+            }
             break;
         }
     }
