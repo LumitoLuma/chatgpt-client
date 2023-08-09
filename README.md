@@ -1,8 +1,8 @@
-# ANSI C ChatGPT client
+# Simple C ChatGPT client
 
-**Latest version: 0.4.3 (July 20, 2023)**
+**Latest version: 0.4.4 (August 9, 2023)**
 
-This is a very simple ChatGPT client written in ANSI C (C89) for UNIX-based systems only (for now). It communicates using OpenAI's API to provide a conversational-style terminal interface.
+This is a very simple ChatGPT client written in C (GNU89) for UNIX-based systems only (for now). It communicates using OpenAI's API to provide a conversational-style terminal interface.
 
 You need to be registered with OpenAI and obtain an API key (https://platform.openai.com/account/api-keys). Be aware that API usage may be billed.
 
@@ -49,7 +49,7 @@ You will need to have the `libcurl4` development libraries installed with SSL an
 After that, you can build the tool with just one command:
 
 ```
-$ gcc -o chatgpt chatgpt.c -O2 -lcurl -lcjson -lreadline
+$ gcc -o chatgpt chatgpt.c -O2 -std=gnu89 -lcurl -lcjson -lreadline
 ```
 
 Clang is also supported.
@@ -58,15 +58,14 @@ Clang is also supported.
 
 You can contribute to the development by submitting a pull request. An orientative to-do list is available below.
 
-The ANSI C ChatGPT client is licensed using the GPL-3.0 license, more information in the LICENSE file.
+The C ChatGPT client is licensed using the GPL-3.0 license, more information in the LICENSE file.
 
 ### To-Do
 
-- [x] <s>Main ANSI C client</s>
+- [x] <s>Main C ChatGPT client</s>
 - [x] <s>Conversation mode</s>
 - [x] <s>Changing default model in configuration</s>
 - [ ] Windows port
-- [ ] Securely store API key
 - [ ] Maintaining conversations between sessions
 
 <br>

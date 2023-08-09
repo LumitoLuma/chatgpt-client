@@ -1,5 +1,5 @@
 /*
-    A simple ChatGPT client written in ANSI C
+    A simple ChatGPT client written in C
     Copyright (C) 2023 Lumito - www.lumito.net
 
     This program is free software: you can redistribute it and/or modify
@@ -27,7 +27,7 @@
 #include <sys/types.h>
 #include <unistd.h>
 
-#define APP_VERSION "0.4.3"
+#define APP_VERSION "0.4.4"
 
 unsigned int tokens = 0;
 
@@ -53,6 +53,15 @@ void init_string(struct string *__str)
         exit(EXIT_FAILURE);
     }
     __str->ptr[0] = '\0';
+}
+
+char *strdup(const char *s)
+{
+    char *d = malloc(strlen(s) + 1);
+    if (d == NULL)
+        return NULL;
+    strcpy(d, s);
+    return d;
 }
 
 char *concat(const char *__str1, const char *__str2)
@@ -141,6 +150,7 @@ char *chatgpt_curl_perform(const char *data, const char *apikey, const char *end
     curl_easy_setopt(curl, CURLOPT_POSTFIELDS, data);
     curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, strlen(data));
     curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
+    curl_easy_setopt(curl, CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_2);
     curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, writefunc);
     curl_easy_setopt(curl, CURLOPT_WRITEDATA, &json_output);
     curl_easy_setopt(curl, CURLOPT_TIMEOUT, 300L);
@@ -609,7 +619,7 @@ int setup(char *configdir, char *apikey, char *model)
             }
             else
                 fprintf(stderr, "Error: command not recognized.\n");
-                continue;
+            continue;
             break;
         }
     }
