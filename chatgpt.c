@@ -21,13 +21,14 @@
 #include <pwd.h>
 #include <readline/history.h>
 #include <readline/readline.h>
+#include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/types.h>
 #include <unistd.h>
 
-#define APP_VERSION "0.4.4"
+#define APP_VERSION "0.5.0"
 
 unsigned int tokens = 0;
 
@@ -105,13 +106,20 @@ unsigned short contains_str_before_space(const char *full_str, const char *coinc
         return 0;
     }
 
-    if (space == NULL || found_coinc < space)
+    if (found_coinc < space)
     {
         if (remaining_data != NULL)
         {
             *remaining_data = space ? (char *)(space + 1) : NULL;
         }
         return 1;
+    }
+
+    if (space == NULL)
+    {
+        if (strcmp(full_str, coincidence) == 0)
+            return 1;
+        return 0;
     }
 
     return 0;
@@ -338,14 +346,19 @@ char **custom_completion(const char *text, int start, int end)
     return rl_completion_matches(text, autocomplete);
 }
 
-int custom_backspace()
+/* Handle Ctrl+C presses in shell mode (else will quit the program) */
+void ctrlCHandler(int sig_num)
 {
-    rl_delete_text(rl_point - 1, rl_point);
-    printf("\a");
+    signal(SIGINT, ctrlCHandler);
+    printf("\n");
+    rl_on_new_line();
+    rl_replace_line("", 0);
+    rl_redisplay();
 }
 
 int shell_mode(char *apikey, char *def_model)
 {
+    signal(SIGINT, ctrlCHandler);
     char *orig_apikey = NULL, *endpoint = "https://api.openai.com/v1/chat/completions";
     if (apikey != NULL)
     {
@@ -353,11 +366,13 @@ int shell_mode(char *apikey, char *def_model)
     }
     printf("ChatGPT conversation shell. Type /help for command usage.\n\n");
     char *prompt_1 = "{\"model\": \"";
-    char *prompt_2 = "\", \"messages\": [";
     char *model = def_model;
+    char *prompt_2 = "\", \"temperature\": ";
+    float temperature = 1.0F;
+    char *prompt_3 = ", \"messages\": [";
     char *prompt_system = "";
     char *conversation = "";
-    char *prompt_3 = "]}";
+    char *prompt_4 = "]}";
 
     bool show_usage = true;
 
@@ -388,8 +403,10 @@ int shell_mode(char *apikey, char *def_model)
                     printf("  /model <model> - Change the model used, run /model with no model to reset.\n");
                     printf("  /apikey <key> - Change or set the API key used, run /apikey with no key to reset.\n");
                     printf("  /showusage <true|false> - Show used tokens during conversation. Run with no value to reset.\n");
+                    printf("  /temperature <value> - Change model's temperature. <value> must be or be between 0.0 and 2.0. Lower values cause more deterministic answers, while higher values cause more random ones. Run with no value to reset.\n");
                     printf("  /reset - Reset the conversation.\n");
                     printf("  /endpoint <URL> - (EXPERT ONLY) Change the API endpoint used, run /endpoint with no URL to reset.\n");
+                    printf("  /clear - Clear terminal screen.\n");
                     printf("  /help - Show this help message.\n");
                     printf("  /version - Show application version.\n");
                     printf("  /exit - Exit the shell.\n");
@@ -460,6 +477,22 @@ int shell_mode(char *apikey, char *def_model)
                     else
                         printf("Show usage value not recognized.\n");
                 }
+                else if (contains_str_before_space(read_result, "/temperature", &remaining_data))
+                {
+                    if (remaining_data == NULL)
+                    {
+                        temperature = 1.0F;
+                        printf("Temperature successfully reset (set to %.1f).\n", temperature);
+                        continue;
+                    }
+                    if (0.0F <= atof(remaining_data) && atof(remaining_data) <= 2.0F)
+                    {
+                        temperature = atof(remaining_data);
+                        printf("Temperature set to %.1f.\n", temperature);
+                    }
+                    else
+                        printf("Temperature invalid. Must be greater or equal to 0 and less or equal to 2.\n");
+                }
                 else if (contains_str_before_space(read_result, "/reset", &remaining_data))
                 {
                     conversation = "";
@@ -468,6 +501,13 @@ int shell_mode(char *apikey, char *def_model)
                 }
                 else if (contains_str_before_space(read_result, "/version", &remaining_data))
                     printf("%s\n", APP_VERSION);
+                else if (contains_str_before_space(read_result, "/clear", &remaining_data))
+                {
+                    rl_clear_display(0, 0);
+                    printf("\r");
+                    rl_replace_line("", 0);
+                    rl_redisplay();
+                }
                 else if (contains_str_before_space(read_result, "/exit", &remaining_data))
                 {
                     printf("Bye!\n");
@@ -492,10 +532,16 @@ int shell_mode(char *apikey, char *def_model)
                 strcpy(data, prompt_1);
                 data = concat(data, model);
                 data = concat(data, prompt_2);
+                int f_temp_length = snprintf(NULL, 0, "%.1f", temperature) + 1;
+                char *f_temp = malloc(f_temp_length);
+                snprintf(f_temp, f_temp_length, "%.1f", temperature);
+                data = concat(data, f_temp);
+                free(f_temp);
+                data = concat(data, prompt_3);
                 if (strcmp(prompt_system, "") != 0)
                     data = concat(data, prompt_system);
                 data = concat(data, conversation);
-                data = concat(data, prompt_3);
+                data = concat(data, prompt_4);
                 char *result = chatgpt_curl_perform(data, apikey, endpoint);
                 free(data);
                 if (result == NULL)
@@ -533,8 +579,8 @@ int setup(char *configdir, char *apikey, char *model)
     while (true)
     {
         printf("-- Current configuration ---\n");
-        printf("API key: %s\n", apikey);
-        printf("Model: %s\n-----------------------------\n", model);
+        printf("API key: %s\n", apikey ? apikey : "(none)");
+        printf("Model: %s\n-----------------------------\n", model ? model : "(none)");
         printf("What action do you want to perform?\n [1] %s API key\n [2] %s model\n [w] Save and exit\n [q] Exit without saving.\n",
                apikey == NULL ? "Set" : "Modify or unset",
                model == NULL ? "Set" : "Modify or unset");
@@ -554,7 +600,7 @@ int setup(char *configdir, char *apikey, char *model)
                 printf("Please enter your OpenAI API key in the prompt below.\n");
                 printf("You can obtain yours here: https://platform.openai.com/account/api-keys\n");
                 printf("You might be billed for the usage you make within this application.\n");
-                printf("To unset this value, please enter '(null)'.\n");
+                printf("To unset this value, please enter '(none)'.\n");
                 printf("To return to the previous menu, press enter.\n[1]> ");
                 char *apistr = "";
                 c = '\n';
@@ -565,7 +611,7 @@ int setup(char *configdir, char *apikey, char *model)
                     str[1] = '\0';
                     apistr = concat(apistr, str);
                 }
-                if (strcmp(apistr, "(null)") == 0)
+                if (strcmp(apistr, "(none)") == 0)
                     apikey = NULL;
                 else if (strlen(apistr) != 0)
                     apikey = apistr;
@@ -575,7 +621,7 @@ int setup(char *configdir, char *apikey, char *model)
             {
                 printf("Please enter your OpenAI chat model in the prompt below.\n");
                 printf("Check your available models: https://platform.openai.com/playground?mode=chat\n");
-                printf("To unset this value, please enter '(null)'.\n");
+                printf("To unset this value, please enter '(none)'.\n");
                 printf("To return to the previous menu, press enter.\n[2]> ");
                 char *modelstr = "";
                 c = '\n';
@@ -586,7 +632,7 @@ int setup(char *configdir, char *apikey, char *model)
                     str[1] = '\0';
                     modelstr = concat(modelstr, str);
                 }
-                if (strcmp(modelstr, "(null)") == 0)
+                if (strcmp(modelstr, "(none)") == 0)
                     model = NULL;
                 else if (strlen(modelstr) != 0)
                     model = modelstr;
@@ -599,7 +645,6 @@ int setup(char *configdir, char *apikey, char *model)
                 if (fp == NULL)
                 {
                     fprintf(stderr, " Error: cannot save data. Please try again later or check permissions.\n");
-                    fclose(fp);
                     break;
                 }
                 if (apikey != NULL)
@@ -669,7 +714,7 @@ int main(int argc, char **argv)
         if (argc > 1)
             if (strcmp(argv[1], "--help") == 0)
                 return help(argv[0]);
-            else if (strcmp(argv[1], "--setup") == 0)
+            if (strcmp(argv[1], "--setup") == 0)
                 return setup(configdir, NULL, NULL);
         fprintf(stderr, "Error: No API key found. Please re-run the program with the '--setup' flag to configure it.\n");
         return 1;
@@ -744,9 +789,9 @@ int main(int argc, char **argv)
     else if (argc > 1)
         if (strcmp(argv[1], "--help") == 0)
             return help(argv[0]);
-        else if (strcmp(argv[1], "--setup") == 0)
+        if (strcmp(argv[1], "--setup") == 0)
             return setup(configdir, useapi ? apikey : NULL, model);
-        else if (!useapi)
+        if (!useapi)
         {
             fprintf(stderr, "Error: No API key found. Please re-run the program with the '--setup' flag to configure it.\n");
             return 1;

@@ -1,8 +1,14 @@
 # Simple C ChatGPT client
 
-**Latest version: 0.4.4 (August 9, 2023)**
+**Latest version: 0.5.0 (August 10, 2023)**
+> **Changelog:**
+> - Added /temperature command to customize the model's temperature (randomness).
+> - Added /clear command to clear the shell display (like the `clear` bash-shell command).
+> - Handle Ctrl+C keystroke correctly.
+> - Fixed possible security issues and segfaults.
+> - Other minor bugfixes.
 
-This is a very simple ChatGPT client written in C (GNU89) for UNIX-based systems only (for now). It communicates using OpenAI's API to provide a conversational-style terminal interface.
+This is a simple ChatGPT client written in C (GNU89) for UNIX-based systems only (for now). It communicates using OpenAI's API to provide a conversational-style terminal interface.
 
 You need to be registered with OpenAI and obtain an API key (https://platform.openai.com/account/api-keys). Be aware that API usage may be billed.
 
