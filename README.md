@@ -1,12 +1,9 @@
 # Simple C ChatGPT client
 
-**Latest version: 0.5.0 (August 10, 2023)**
+**Latest version: 0.5.1 (November 19, 2023)**
 > **Changelog:**
-> - Added /temperature command to customize the model's temperature (randomness).
-> - Added /clear command to clear the shell display (like the `clear` bash-shell command).
-> - Handle Ctrl+C keystroke correctly.
-> - Fixed possible security issues and segfaults.
-> - Other minor bugfixes.
+> - Added /import and /export commands to preserve conversations between sessions.
+> - Other minor changes.
 
 This is a simple ChatGPT client written in C (GNU89) for UNIX-based systems only (for now). It communicates using OpenAI's API to provide a conversational-style terminal interface.
 
@@ -71,8 +68,8 @@ The C ChatGPT client is licensed using the GPL-3.0 license, more information in 
 - [x] <s>Main C ChatGPT client</s>
 - [x] <s>Conversation mode</s>
 - [x] <s>Changing default model in configuration</s>
+- [x] <s>Maintaining conversations between sessions</s>
 - [ ] Windows port
-- [ ] Maintaining conversations between sessions
 
 <br>
 

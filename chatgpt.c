@@ -28,7 +28,7 @@
 #include <sys/types.h>
 #include <unistd.h>
 
-#define APP_VERSION "0.5.0"
+#define APP_VERSION "0.5.1"
 
 unsigned int tokens = 0;
 
@@ -399,17 +399,19 @@ int shell_mode(char *apikey, char *def_model)
                 {
                     printf("Commands starting with / are shell commands, else they are sent to the model.\n\n");
                     printf("Available shell commands:\n");
-                    printf("  /system <prompt> - Change the \"system\" prompt, run /system with no prompt to clear.\n");
-                    printf("  /model <model> - Change the model used, run /model with no model to reset.\n");
-                    printf("  /apikey <key> - Change or set the API key used, run /apikey with no key to reset.\n");
+                    printf("  /system <prompt>        - Change the \"system\" prompt, run /system with no prompt to clear.\n");
+                    printf("  /model <model>          - Change the model used, run /model with no model to reset.\n");
+                    printf("  /apikey <key>           - Change or set the API key used, run /apikey with no key to reset.\n");
                     printf("  /showusage <true|false> - Show used tokens during conversation. Run with no value to reset.\n");
-                    printf("  /temperature <value> - Change model's temperature. <value> must be or be between 0.0 and 2.0. Lower values cause more deterministic answers, while higher values cause more random ones. Run with no value to reset.\n");
-                    printf("  /reset - Reset the conversation.\n");
-                    printf("  /endpoint <URL> - (EXPERT ONLY) Change the API endpoint used, run /endpoint with no URL to reset.\n");
-                    printf("  /clear - Clear terminal screen.\n");
-                    printf("  /help - Show this help message.\n");
-                    printf("  /version - Show application version.\n");
-                    printf("  /exit - Exit the shell.\n");
+                    printf("  /temperature <value>    - Change model's temperature. <value> must be or be between 0.0 and 2.0. Run with no value to reset.\n");
+                    printf("  /reset                  - Reset the conversation.\n");
+                    printf("  /import <file>          - Import conversation from <file>.\n");
+                    printf("  /export <file>          - Export current conversation to <file>.\n");
+                    printf("  /endpoint <URL>         - (EXPERT ONLY) Change the API endpoint used, run /endpoint with no URL to reset.\n");
+                    printf("  /clear                  - Clear terminal screen.\n");
+                    printf("  /help                   - Show this help message.\n");
+                    printf("  /version                - Show application version.\n");
+                    printf("  /exit                   - Exit the shell.\n");
                 }
                 else if (contains_str_before_space(read_result, "/system", &remaining_data))
                 {
@@ -507,6 +509,75 @@ int shell_mode(char *apikey, char *def_model)
                     printf("\r");
                     rl_replace_line("", 0);
                     rl_redisplay();
+                }
+                else if (contains_str_before_space(read_result, "/export", &remaining_data))
+                {
+                    if (remaining_data == NULL)
+                    {
+                        printf("No destination file provided. Aborting.\n");
+                        continue;
+                    }
+                    FILE *fp = fopen(remaining_data, "w");
+                    if (fp == NULL)
+                    {
+                        printf("Error while opening file for writing. Aborting.\n");
+                        continue;
+                    }
+                    fprintf(fp, "MODEL %s\nTEMP %.1f\nSYS %s\nCONV %s\n", model, temperature, prompt_system, conversation);
+                    fclose(fp);
+                }
+                else if (contains_str_before_space(read_result, "/import", &remaining_data))
+                {
+                    if (remaining_data == NULL)
+                    {
+                        printf("No source file provided. Aborting.\n");
+                        continue;
+                    }
+                    FILE *fp = fopen(remaining_data, "r");
+                    if (fp == NULL)
+                    {
+                        printf("Error while opening file for reading. Aborting.\n");
+                        continue;
+                    }
+                    char* output = "";
+                    int f;
+                    while ((f = fgetc(fp)) != EOF)
+                    {
+                        if (f != '\r')
+                        {
+                            char str[2];
+                            str[0] = f;
+                            str[1] = '\0';
+                            output = concat(output, str);
+                        }
+                    }
+                    char *ptr1, *token = strtok_r(output, "\n", &ptr1);
+                    while (token != NULL)
+                    {
+                        char* remdata = NULL;
+                        if (contains_str_before_space(token, "MODEL", &remdata))
+                        {
+                            if (remdata != NULL)
+                                model = remdata;
+                        }
+                        else if (contains_str_before_space(token, "TEMP", &remdata))
+                        {
+                            if (remdata != NULL)
+                                temperature = atof(remdata);
+                        }
+                        else if (contains_str_before_space(token, "SYS", &remdata))
+                        {
+                            if (remdata != NULL)
+                                prompt_system = remdata;
+                        }
+                        else if (contains_str_before_space(token, "CONV", &remdata))
+                        {
+                            if (remdata != NULL)
+                                conversation = remdata;
+                        }
+                        token = strtok_r(NULL, "\n", &ptr1);
+                    }
+                    fclose(fp);
                 }
                 else if (contains_str_before_space(read_result, "/exit", &remaining_data))
                 {
@@ -714,8 +785,8 @@ int main(int argc, char **argv)
         if (argc > 1)
             if (strcmp(argv[1], "--help") == 0)
                 return help(argv[0]);
-            if (strcmp(argv[1], "--setup") == 0)
-                return setup(configdir, NULL, NULL);
+        if (strcmp(argv[1], "--setup") == 0)
+            return setup(configdir, NULL, NULL);
         fprintf(stderr, "Error: No API key found. Please re-run the program with the '--setup' flag to configure it.\n");
         return 1;
     }
@@ -789,13 +860,13 @@ int main(int argc, char **argv)
     else if (argc > 1)
         if (strcmp(argv[1], "--help") == 0)
             return help(argv[0]);
-        if (strcmp(argv[1], "--setup") == 0)
-            return setup(configdir, useapi ? apikey : NULL, model);
-        if (!useapi)
-        {
-            fprintf(stderr, "Error: No API key found. Please re-run the program with the '--setup' flag to configure it.\n");
-            return 1;
-        }
+    if (strcmp(argv[1], "--setup") == 0)
+        return setup(configdir, useapi ? apikey : NULL, model);
+    if (!useapi)
+    {
+        fprintf(stderr, "Error: No API key found. Please re-run the program with the '--setup' flag to configure it.\n");
+        return 1;
+    }
 
     char *prompt = "";
 
