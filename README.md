@@ -1,9 +1,8 @@
 # Simple C ChatGPT client
 
-**Latest version: 0.5.1 (November 19, 2023)**
+**Latest version: 0.5.2 (December 8, 2023)**
 > **Changelog:**
-> - Added /import and /export commands to preserve conversations between sessions.
-> - Other minor changes.
+> - Added new commands to shell autocompletion.
 
 This is a simple ChatGPT client written in C (GNU89) for UNIX-based systems only (for now). It communicates using OpenAI's API to provide a conversational-style terminal interface.
 

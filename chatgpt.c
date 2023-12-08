@@ -28,7 +28,7 @@
 #include <sys/types.h>
 #include <unistd.h>
 
-#define APP_VERSION "0.5.1"
+#define APP_VERSION "0.5.2"
 
 unsigned int tokens = 0;
 
@@ -300,14 +300,14 @@ char *autocomplete(const char *text, int state)
     /* Not the best code at all, but it requires few memory management */
     if (strlen(text) < 1)
         return NULL;
-    const char *available_commands[9] = {"/apikey", "/endpoint", "/exit",
-                                         "/help", "/model", "/reset",
-                                         "/showusage", "/system", "/version"};
+    const char *available_commands[13] = { "/apikey", "/clear", "/endpoint", "/exit", "/export",
+                                         "/help", "/import", "/model", "/reset",
+                                         "/showusage", "/system", "/temperature", "/version" };
     unsigned short total_commands = 0;
     size_t text_length = strlen(text);
 
     unsigned short i = 0;
-    for (; i < 9; i++)
+    for (; i < 13; i++)
     {
         if (strncmp(available_commands[i], text, text_length) == 0)
             total_commands++;
@@ -316,7 +316,7 @@ char *autocomplete(const char *text, int state)
         printf("\a");
     else if (total_commands == 1)
     {
-        for (i = 0; i < 9; i++)
+        for (i = 0; i < 13; i++)
             if (strncmp(available_commands[i], text, text_length) == 0)
             {
                 rl_replace_line("", 0);
@@ -328,7 +328,7 @@ char *autocomplete(const char *text, int state)
     else
     {
         printf("\n");
-        for (i = 0; i < 9; i++)
+        for (i = 0; i < 13; i++)
             if (strncmp(available_commands[i], text, text_length) == 0)
                 printf("%s\n", available_commands[i]);
         rl_on_new_line();
